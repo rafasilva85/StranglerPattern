@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strangler Pattern - Code Snippets</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .code-container {
+            margin: 20px 0;
+        }
+        .code-tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        .code-tab {
+            padding: 8px 15px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        .code-tab.active {
+            background-color: #f8f9fa;
+            border-color: #ddd;
+            border-bottom: 1px solid #f8f9fa;
+            margin-bottom: -1px;
+        }
+        .code-content {
+            display: none;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-top: none;
+            padding: 15px;
+            border-radius: 0 0 5px 5px;
+        }
+        .code-content.active {
+            display: block;
+        }
+        .highlight {
+            background-color: #ffffcc;
+        }
+        .nav-bar {
+            display: flex;
+            background-color: #2c3e50;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .nav-item {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            margin-right: 10px;
+            border-radius: 4px;
+        }
+        .nav-item:hover {
+            background-color: #3498db;
+        }
+        .nav-item.active {
+            background-color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-bar">
+        <a href="index.html" class="nav-item">Demo</a>
+        <a href="code-snippets.html" class="nav-item active">Code Snippets</a>
+    </div>
+
+    <h1>Strangler Pattern - Code Snippets</h1>
+    
+    <div class="explanation">
+        <p>This page provides key code snippets that demonstrate how the Strangler Pattern is implemented in this demo application. The pattern allows for gradually migrating from a legacy system (V1) to a new system (V2) by incrementally replacing specific functions.</p>
+    </div>
+
+    <h2>1. Facade Implementation</h2>
+    <p>The core of the Strangler Pattern is the facade that routes requests to either the old or new implementation based on feature flags:</p>
+    
+    <div class="code-block">
+<pre>// Feature flag to control which endpoints use V2
+const FEATURES_USING_V2 = {
+  getAllProducts: true,  // GET /api/products
+  getProductById: false, // GET /api/products/:id
+  createProduct: false,  // POST /api/products
+  updateProduct: false,  // PUT /api/products/:id
+  deleteProduct: false   // DELETE /api/products/:id
+};
+
+// Strangler facade that routes requests to either V1 or V2
+app.use('/api/products', (req, res, next) => {
+  // Determine which version to use based on the request
+  let useV2 = false;
+  
+  if (req.method === 'GET' && !req.params.id) {
+    // GET /api/products (list all)
+    useV2 = FEATURES_USING_V2.getAllProducts;
+  } else if (req.method === 'GET' && req.params.id) {
+    // GET /api/products/:id (get one)
+    useV2 = FEATURES_USING_V2.getProductById;
+  } else if (req.method === 'POST') {
+    // POST /api/products (create)
+    useV2 = FEATURES_USING_V2.createProduct;
+  } else if (req.method === 'PUT') {
+    // PUT /api/products/:id (update)
+    useV2 = FEATURES_USING_V2.updateProduct;
+  } else if (req.method === 'DELETE') {
+    // DELETE /api/products/:id (delete)
+    useV2 = FEATURES_USING_V2.deleteProduct;
+  }
+  
+  // Route to the appropriate version
+  if (useV2) {
+    console.log('Using V2 implementation');
+    return productsV2Router(req, res, next);
+  } else {
+    console.log('Using V1 implementation');
+    return productsV1Router(req, res, next);
+  }
+});</pre>
+    </div>
+
+    <h2>2. V1 vs V2 Implementation Comparison</h2>
+    <p>Let's compare the implementation of the GET all products endpoint in both versions:</p>
+
+    <div class="code-container">
+        <div class="code-tabs">
+            <div class="code-tab active" onclick="switchTab(this, 'v1-get-all')">V1 (Legacy)</div>
+            <div class="code-tab" onclick="switchTab(this, 'v2-get-all')">V2 (New)</div>
+        </div>
+        <div id="v1-get-all" class="code-content active">
+<pre>// GET all products
+router.get('/', (req, res) => {
+  db.all('SELECT * FROM products', (err, rows) => {
+    if (err) {
+      console.error('Error fetching products:', err);
+      return res.status(500).json({ error: 'Failed to fetch products' });
+    }
+    res.json({
+      version: 'v1',
+      data: rows
+    });
+  });
+});</pre>
+        </div>
+        <div id="v2-get-all" class="code-content">
+<pre>// GET all products with filtering and sorting
+router.get('/', (req, res) => {
+  // Check cache first
+  if (isCacheValid(cache.allProducts)) {
+    console.log('Serving products from cache');
+    return res.json({
+      version: 'v2',
+      data: cache.allProducts.data,
+      fromCache: true
+    });
+  }
+
+  // Process query parameters for filtering and sorting
+  const { minPrice, maxPrice, sort } = req.query;
+  
+  let query = 'SELECT * FROM products';
+  const params = [];
+  
+  // Apply filters if provided
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    query += ' WHERE';
+    
+    if (minPrice !== undefined) {
+      query += ' price >= ?';
+      params.push(parseFloat(minPrice));
+    }
+    
+    if (maxPrice !== undefined) {
+      if (minPrice !== undefined) query += ' AND';
+      query += ' price <= ?';
+      params.push(parseFloat(maxPrice));
+    }
+  }
+  
+  // Apply sorting if provided
+  if (sort === 'price_asc') {
+    query += ' ORDER BY price ASC';
+  } else if (sort === 'price_desc') {
+    query += ' ORDER BY price DESC';
+  } else if (sort === 'name') {
+    query += ' ORDER BY name ASC';
+  } else if (sort === 'newest') {
+    query += ' ORDER BY created_at DESC';
+  }
+  
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      console.error('Error fetching products:', err);
+      return res.status(500).json({ 
+        error: 'Failed to fetch products',
+        details: err.message
+      });
+    }
+    
+    // Update cache
+    cache.allProducts.data = rows;
+    cache.allProducts.timestamp = Date.now();
+    
+    res.json({
+      version: 'v2',
+      data: rows,
+      filters: { minPrice, maxPrice },
+      sort: sort || 'default'
+    });
+  });
+});</pre>
+        </div>
+    </div>
+
+    <h2>3. Gradual Migration Strategy</h2>
+    <p>The Strangler Pattern allows for a gradual migration strategy. Here's how you can update the feature flags to migrate more endpoints:</p>
+
+    <div class="code-block">
+<pre>// Initial state - only GET all products uses V2
+const FEATURES_USING_V2 = {
+  getAllProducts: true,  // GET /api/products
+  getProductById: false, // GET /api/products/:id
+  createProduct: false,  // POST /api/products
+  updateProduct: false,  // PUT /api/products/:id
+  deleteProduct: false   // DELETE /api/products/:id
+};
+
+// Later - migrate more endpoints to V2
+const FEATURES_USING_V2 = {
+  getAllProducts: true,  
+  getProductById: true,  // Now using V2
+  createProduct: true,   // Now using V2
+  updateProduct: false, 
+  deleteProduct: false   
+};
+
+// Final state - all endpoints use V2
+const FEATURES_USING_V2 = {
+  getAllProducts: true,
+  getProductById: true,
+  createProduct: true,
+  updateProduct: true,   // Now using V2
+  deleteProduct: true    // Now using V2
+};</pre>
+    </div>
+
+    <h2>4. Direct Version Access</h2>
+    <p>For testing and comparison purposes, the application also provides direct access to specific API versions:</p>
+
+    <div class="code-block">
+<pre>// Direct access to specific API versions (for testing/comparison)
+app.use('/api/v1/products', productsV1Router);
+app.use('/api/v2/products', productsV2Router);</pre>
+    </div>
+
+    <h2>5. V2 Improvements</h2>
+    <p>The V2 implementation includes several improvements over V1:</p>
+
+    <h3>5.1. Caching</h3>
+    <div class="code-block">
+<pre>// Simulated cache
+const cache = {
+  allProducts: {
+    data: null,
+    timestamp: null,
+    ttl: 60000 // 1 minute cache TTL
+  },
+  productById: {}
+};
+
+// Helper to check if cache is valid
+const isCacheValid = (cacheEntry) => {
+  return cacheEntry && 
+         cacheEntry.data && 
+         cacheEntry.timestamp && 
+         (Date.now() - cacheEntry.timestamp < cacheEntry.ttl);
+};</pre>
+    </div>
+
+    <h3>5.2. Enhanced Validation</h3>
+    <div class="code-block">
+<pre>// Enhanced validation
+const errors = [];
+
+if (!name) errors.push('Name is required');
+else if (name.length < 3) errors.push('Name must be at least 3 characters long');
+
+if (!price) errors.push('Price is required');
+else if (isNaN(price) || price <= 0) errors.push('Price must be a positive number');
+
+if (errors.length > 0) {
+  return res.status(400).json({ 
+    error: 'Validation failed',
+    details: errors
+  });
+}</pre>
+    </div>
+
+    <h3>5.3. Better Error Handling</h3>
+    <div class="code-block">
+<pre>if (err) {
+  console.error('Error fetching products:', err);
+  return res.status(500).json({ 
+    error: 'Failed to fetch products',
+    details: err.message  // More detailed error information
+  });
+}</pre>
+    </div>
+
+    <h3>5.4. Additional Features (Filtering and Sorting)</h3>
+    <div class="code-block">
+<pre>// Process query parameters for filtering and sorting
+const { minPrice, maxPrice, sort } = req.query;
+
+let query = 'SELECT * FROM products';
+const params = [];
+
+// Apply filters if provided
+if (minPrice !== undefined || maxPrice !== undefined) {
+  query += ' WHERE';
+  
+  if (minPrice !== undefined) {
+    query += ' price >= ?';
+    params.push(parseFloat(minPrice));
+  }
+  
+  if (maxPrice !== undefined) {
+    if (minPrice !== undefined) query += ' AND';
+    query += ' price <= ?';
+    params.push(parseFloat(maxPrice));
+  }
+}
+
+// Apply sorting if provided
+if (sort === 'price_asc') {
+  query += ' ORDER BY price ASC';
+} else if (sort === 'price_desc') {
+  query += ' ORDER BY price DESC';
+} else if (sort === 'name') {
+  query += ' ORDER BY name ASC';
+} else if (sort === 'newest') {
+  query += ' ORDER BY created_at DESC';
+}</pre>
+    </div>
+
+    <h2>6. Complete Implementation</h2>
+    <p>For the complete implementation, check out the following files in the project:</p>
+    <ul>
+        <li><code>index.js</code> - Main application with Strangler Pattern implementation</li>
+        <li><code>routes/products-v1.js</code> - V1 (legacy) implementation</li>
+        <li><code>routes/products-v2.js</code> - V2 (new) implementation</li>
+        <li><code>db.js</code> - Database setup and initialization</li>
+    </ul>
+
+    <script>
+        function switchTab(tab, contentId) {
+            // Remove active class from all tabs
+            const tabs = tab.parentElement.getElementsByClassName('code-tab');
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+            }
+            
+            // Add active class to clicked tab
+            tab.classList.add('active');
+            
+            // Hide all content
+            const contents = document.getElementsByClassName('code-content');
+            for (let i = 0; i < contents.length; i++) {
+                contents[i].classList.remove('active');
+            }
+            
+            // Show selected content
+            document.getElementById(contentId).classList.add('active');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strangler Pattern Demo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="nav-bar">
+        <a href="index.html" class="nav-item active">Demo</a>
+        <a href="code-snippets.html" class="nav-item">Code Snippets</a>
+    </div>
+
+    <h1>Strangler Pattern Demo</h1>
+    
+    <div class="explanation">
+        <p>This demo illustrates the <strong>Strangler Pattern</strong> for gradually migrating from a legacy system to a new system. The pattern allows for incremental replacement of functionality while maintaining system stability.</p>
+        <p>In this example, we have a product management API with two implementations:</p>
+        <ul>
+            <li><strong>V1 (Legacy)</strong>: Basic implementation with minimal features</li>
+            <li><strong>V2 (New)</strong>: Enhanced implementation with improved error handling, validation, caching, and additional features</li>
+        </ul>
+    </div>
+
+    <h2>Feature Flags</h2>
+    <p>Control which endpoints use the V2 implementation:</p>
+    <div class="feature-flags">
+        <div class="feature-flag">
+            <input type="checkbox" id="getAllProducts" checked>
+            <label for="getAllProducts">GET /api/products (List all)</label>
+        </div>
+        <div class="feature-flag">
+            <input type="checkbox" id="getProductById">
+            <label for="getProductById">GET /api/products/:id (Get one)</label>
+        </div>
+        <div class="feature-flag">
+            <input type="checkbox" id="createProduct">
+            <label for="createProduct">POST /api/products (Create)</label>
+        </div>
+        <div class="feature-flag">
+            <input type="checkbox" id="updateProduct">
+            <label for="updateProduct">PUT /api/products/:id (Update)</label>
+        </div>
+        <div class="feature-flag">
+            <input type="checkbox" id="deleteProduct">
+            <label for="deleteProduct">DELETE /api/products/:id (Delete)</label>
+        </div>
+    </div>
+    <button id="applyFlags">Apply Feature Flags</button>
+    <p><small>Note: This is a simulation. In a real application, feature flags would be stored server-side.</small></p>
+
+    <h2>Test API Endpoints</h2>
+    <div class="container">
+        <div class="panel">
+            <h3>Products API <small>(Uses V1 or V2 based on feature flags)</small></h3>
+            <button id="getProducts">GET /api/products</button>
+            <button id="getProduct">GET /api/products/:id</button>
+            <button id="createProductBtn">POST /api/products</button>
+            <button id="updateProductBtn">PUT /api/products/:id</button>
+            <button id="deleteProductBtn">DELETE /api/products/:id</button>
+            <pre id="apiResult">Results will appear here...</pre>
+        </div>
+        
+        <div class="panel">
+            <h3>Compare V1 vs V2</h3>
+            <button id="compareGet">Compare GET /api/products</button>
+            <button id="compareGetById">Compare GET /api/products/:id</button>
+            <div class="container">
+                <div class="panel">
+                    <h4>V1 (Legacy) <span class="version-badge v1">V1</span></h4>
+                    <pre id="v1Result">Results will appear here...</pre>
+                </div>
+                <div class="panel">
+                    <h4>V2 (New) <span class="version-badge v2">V2</span></h4>
+                    <pre id="v2Result">Results will appear here...</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2>Strangler Pattern Visualization</h2>
+    <div class="explanation">
+        <p>The diagram below illustrates how the Strangler Pattern works:</p>
+        <ol>
+            <li>Initially, all requests go through the legacy system (V1)</li>
+            <li>Gradually, specific endpoints are routed to the new system (V2)</li>
+            <li>Eventually, all endpoints use the new system, and the legacy system can be removed</li>
+        </ol>
+    </div>
+    
+    <svg class="diagram" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+        <!-- Client -->
+        <rect x="50" y="180" width="100" height="50" rx="5" fill="#3498db" />
+        <text x="100" y="210" text-anchor="middle" fill="white">Client</text>
+        
+        <!-- Facade -->
+        <rect x="250" y="150" width="120" height="100" rx="5" fill="#f39c12" />
+        <text x="310" y="180" text-anchor="middle" fill="white">Facade</text>
+        <text x="310" y="200" text-anchor="middle" fill="white">Router</text>
+        <text x="310" y="220" text-anchor="middle" fill="white">Feature Flags</text>
+        
+        <!-- V1 System -->
+        <rect x="500" y="80" width="120" height="80" rx="5" fill="#e74c3c" />
+        <text x="560" y="120" text-anchor="middle" fill="white">V1 (Legacy)</text>
+        <text x="560" y="140" text-anchor="middle" fill="white">System</text>
+        
+        <!-- V2 System -->
+        <rect x="500" y="240" width="120" height="80" rx="5" fill="#2ecc71" />
+        <text x="560" y="280" text-anchor="middle" fill="white">V2 (New)</text>
+        <text x="560" y="300" text-anchor="middle" fill="white">System</text>
+        
+        <!-- Arrows -->
+        <line x1="150" y1="205" x2="250" y2="205" stroke="#333" stroke-width="2" />
+        <polygon points="245,200 255,205 245,210" fill="#333" />
+        
+        <!-- V1 Arrow -->
+        <line x1="370" y1="180" x2="500" y2="120" stroke="#e74c3c" stroke-width="2" />
+        <polygon points="495,115 505,120 495,125" fill="#e74c3c" />
+        <text x="435" y="130" text-anchor="middle" fill="#e74c3c">V1 Routes</text>
+        
+        <!-- V2 Arrow -->
+        <line x1="370" y1="220" x2="500" y2="280" stroke="#2ecc71" stroke-width="2" />
+        <polygon points="495,275 505,280 495,285" fill="#2ecc71" />
+        <text x="435" y="270" text-anchor="middle" fill="#2ecc71">V2 Routes</text>
+        
+        <!-- Timeline -->
+        <line x1="100" y1="350" x2="700" y2="350" stroke="#333" stroke-width="2" />
+        <circle cx="200" cy="350" r="5" fill="#333" />
+        <text x="200" y="370" text-anchor="middle">Start</text>
+        
+        <circle cx="350" cy="350" r="5" fill="#333" />
+        <text x="350" y="370" text-anchor="middle">Partial Migration</text>
+        
+        <circle cx="500" cy="350" r="5" fill="#333" />
+        <text x="500" y="370" text-anchor="middle">More Features Migrated</text>
+        
+        <circle cx="650" cy="350" r="5" fill="#333" />
+        <text x="650" y="370" text-anchor="middle">Complete Migration</text>
+        
+        <!-- Migration Progress -->
+        <rect x="200" y="340" width="150" height="20" fill="#e74c3c" />
+        <rect x="350" y="340" width="150" height="20" fill="#f39c12" />
+        <rect x="500" y="340" width="150" height="20" fill="#2ecc71" />
+    </svg>
+
+    <h2>Key Benefits of the Strangler Pattern</h2>
+    <ul>
+        <li><strong>Reduced Risk</strong>: Migrate functionality incrementally rather than all at once</li>
+        <li><strong>Continuous Delivery</strong>: Keep delivering value while migrating</li>
+        <li><strong>Easier Testing</strong>: Compare old and new implementations side by side</li>
+        <li><strong>Reversibility</strong>: Easily roll back to the old implementation if issues arise</li>
+        <li><strong>Manageable Complexity</strong>: Break a large migration into smaller, manageable pieces</li>
+    </ul>
+
+    <script>
+        // Simulated product data
+        const products = [
+            { id: 1, name: "Laptop", price: 999.99, description: "High-performance laptop" },
+            { id: 2, name: "Smartphone", price: 699.99, description: "Latest smartphone model" },
+            { id: 3, name: "Headphones", price: 149.99, description: "Noise-cancelling headphones" }
+        ];
+
+        // Feature flags (simulated)
+        let featureFlags = {
+            getAllProducts: true,
+            getProductById: false,
+            createProduct: false,
+            updateProduct: false,
+            deleteProduct: false
+        };
+
+        // Update feature flags based on checkboxes
+        document.getElementById('applyFlags').addEventListener('click', () => {
+            featureFlags.getAllProducts = document.getElementById('getAllProducts').checked;
+            featureFlags.getProductById = document.getElementById('getProductById').checked;
+            featureFlags.createProduct = document.getElementById('createProduct').checked;
+            featureFlags.updateProduct = document.getElementById('updateProduct').checked;
+            featureFlags.deleteProduct = document.getElementById('deleteProduct').checked;
+            
+            alert('Feature flags updated! (Simulated - in a real app, this would update server-side configuration)');
+        });
+
+        // Initialize checkboxes based on feature flags
+        document.getElementById('getAllProducts').checked = featureFlags.getAllProducts;
+        document.getElementById('getProductById').checked = featureFlags.getProductById;
+        document.getElementById('createProduct').checked = featureFlags.createProduct;
+        document.getElementById('updateProduct').checked = featureFlags.updateProduct;
+        document.getElementById('deleteProduct').checked = featureFlags.deleteProduct;
+
+        // Simulated API calls
+        function simulateApiCall(endpoint, method, version, params = {}) {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    // Simulate different responses based on version
+                    if (endpoint === 'products' && method === 'GET') {
+                        if (version === 'v1') {
+                            resolve({
+                                version: 'v1',
+                                data: products
+                            });
+                        } else {
+                            resolve({
+                                version: 'v2',
+                                data: products,
+                                filters: params.filters || {},
+                                sort: params.sort || 'default',
+                                fromCache: Math.random() > 0.5 // Randomly simulate cache hits
+                            });
+                        }
+                    } else if (endpoint.startsWith('products/') && method === 'GET') {
+                        const id = parseInt(endpoint.split('/')[1]);
+                        const product = products.find(p => p.id === id);
+                        
+                        if (!product) {
+                            if (version === 'v1') {
+                                resolve({
+                                    version: 'v1',
+                                    error: 'Product not found'
+                                });
+                            } else {
+                                resolve({
+                                    version: 'v2',
+                                    error: 'Product not found',
+                                    message: `No product exists with ID ${id}`
+                                });
+                            }
+                            return;
+                        }
+                        
+                        if (version === 'v1') {
+                            resolve({
+                                version: 'v1',
+                                data: product
+                            });
+                        } else {
+                            resolve({
+                                version: 'v2',
+                                data: product,
+                                fromCache: Math.random() > 0.5 // Randomly simulate cache hits
+                            });
+                        }
+                    }
+                }, 500); // Simulate network delay
+            });
+        }
+
+        // API endpoint handlers
+        document.getElementById('getProducts').addEventListener('click', async () => {
+            const resultElement = document.getElementById('apiResult');
+            resultElement.textContent = 'Loading...';
+            
+            // Determine which version to use based on feature flags
+            const version = featureFlags.getAllProducts ? 'v2' : 'v1';
+            const result = await simulateApiCall('products', 'GET', version);
+            
+            resultElement.textContent = JSON.stringify(result, null, 2);
+        });
+
+        document.getElementById('getProduct').addEventListener('click', async () => {
+            const id = prompt('Enter product ID:', '1');
+            if (!id) return;
+            
+            const resultElement = document.getElementById('apiResult');
+            resultElement.textContent = 'Loading...';
+            
+            // Determine which version to use based on feature flags
+            const version = featureFlags.getProductById ? 'v2' : 'v1';
+            const result = await simulateApiCall(`products/${id}`, 'GET', version);
+            
+            resultElement.textContent = JSON.stringify(result, null, 2);
+        });
+
+        // Compare V1 vs V2
+        document.getElementById('compareGet').addEventListener('click', async () => {
+            const v1Result = document.getElementById('v1Result');
+            const v2Result = document.getElementById('v2Result');
+            
+            v1Result.textContent = 'Loading...';
+            v2Result.textContent = 'Loading...';
+            
+            const result1 = await simulateApiCall('products', 'GET', 'v1');
+            const result2 = await simulateApiCall('products', 'GET', 'v2');
+            
+            v1Result.textContent = JSON.stringify(result1, null, 2);
+            v2Result.textContent = JSON.stringify(result2, null, 2);
+        });
+
+        document.getElementById('compareGetById').addEventListener('click', async () => {
+            const id = prompt('Enter product ID:', '1');
+            if (!id) return;
+            
+            const v1Result = document.getElementById('v1Result');
+            const v2Result = document.getElementById('v2Result');
+            
+            v1Result.textContent = 'Loading...';
+            v2Result.textContent = 'Loading...';
+            
+            const result1 = await simulateApiCall(`products/${id}`, 'GET', 'v1');
+            const result2 = await simulateApiCall(`products/${id}`, 'GET', 'v2');
+            
+            v1Result.textContent = JSON.stringify(result1, null, 2);
+            v2Result.textContent = JSON.stringify(result2, null, 2);
+        });
+
+        // Placeholder for other API operations
+        document.getElementById('createProductBtn').addEventListener('click', () => {
+            const version = featureFlags.createProduct ? 'v2' : 'v1';
+            document.getElementById('apiResult').textContent = `This would create a product using the ${version} implementation.`;
+        });
+
+        document.getElementById('updateProductBtn').addEventListener('click', () => {
+            const version = featureFlags.updateProduct ? 'v2' : 'v1';
+            document.getElementById('apiResult').textContent = `This would update a product using the ${version} implementation.`;
+        });
+
+        document.getElementById('deleteProductBtn').addEventListener('click', () => {
+            const version = featureFlags.deleteProduct ? 'v2' : 'v1';
+            document.getElementById('apiResult').textContent = `This would delete a product using the ${version} implementation.`;
+        });
+    </script>
+</body>
+</html>
